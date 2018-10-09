@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 096ea653c3b52039da7d9d82133fdd537170b80682e953eb31cf5f0e17a5ddad
+-- hash: 45b8a02caf6d0918c334731fdb44df5ea9dbf0fbf15344d912c42f23b42b25a7
 
 name:           porthos
 version:        0.1.0.0
@@ -27,9 +27,7 @@ source-repository head
 library
   exposed-modules:
       Codegen.Solidity
-      Examples
       Lang
-      Lib
       Porthos
       StatementGenerator
   other-modules:
@@ -41,7 +39,7 @@ library
   default-language: Haskell2010
 
 executable porthos-exe
-  main-is: Main.hs
+  main-is: Examples.hs
   other-modules:
       Paths_porthos
   hs-source-dirs:

@@ -156,7 +156,6 @@ newtype Timeout   = Timeout Time
 
 type EventDetails = String
 type Time         = Integer
--- type Participant  = String
 type ActionName   = String
 
 data Participant = Participant {name::String, address::String}
@@ -227,3 +226,8 @@ instance CEq Int Int where
 instance (AssetType t) => CEq (Asset t) (Asset t) where
   x .==. y = CEQ x y
   x .>.  y = CGT x y
+
+data Blockchain = Ethereum_1 | Ethereum_2 | Hyperledger
+
+data AssetRegister = AssetRegister {regType :: String, blockchainSys :: Blockchain}
+

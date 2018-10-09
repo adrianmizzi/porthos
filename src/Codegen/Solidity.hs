@@ -3,12 +3,11 @@ module Codegen.Solidity where
 import           Porthos
 import           StatementGenerator
 
-main :: Contract -> IO()
-main c = do
+generateSolidity :: Contract -> IO()
+generateSolidity c = do
     resetCounters;
-    let initStateId = nextId ()
-    let m = Method Public "constructor" MTConstructor [] [S_UpdateState initStateId]
-    putStrLn (intro ++ generateCode (snd (generateStatements m c initStateId)) ++ "\n}")
+    let m = Method Public "constructor" MTConstructor [] []
+    putStrLn (intro ++ generateCode (generateStatements m c) ++ "\n}")
 
 intro :: String
 intro = "pragma solidity ^0.4.24;\n\n" ++
@@ -41,7 +40,7 @@ generatePreConditions [] = ""
 generatePreConditions (p:pp) = generatePreCondition p ++ generatePreConditions pp
 
 generatePreCondition :: PreCondition -> String
-generatePreCondition (PcState i)             = "\n  if(contractStatus != " ++ show i ++ ") \n    return;"
+-- generatePreCondition (PcState i)             = "\n  if(contractStatus != " ++ show i ++ ") \n    return;"
 generatePreCondition (PcFilter f)            = generateFilterCode f
 generatePreCondition (PcTimeout (Timeout t)) = "\n  if(block.number < " ++ show t ++ ") \n    return;"
 generatePreCondition (PcSemaphore s)         = "\n  if(!semaphore[" ++ show s ++ "]) \n    return;"
@@ -62,7 +61,7 @@ generateStmtCode (s:ss) = generateStmtCode' s ++ generateStmtCode ss
 
 generateStmtCode' :: Statement -> String
 generateStmtCode' S_AddCommitment            = "\n  addCommitment(Commitment({tagId: \"\", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));"
-generateStmtCode' (S_UpdateState s)          = "\n  setContractStatus(" ++ show s ++ ");"
+-- generateStmtCode' (S_UpdateState s)          = "\n  setContractStatus(" ++ show s ++ ");"
 generateStmtCode' (S_ReleaseCommitment c)    = "\n  releaseCommitments(" ++ generateCommitmentDSLCode c ++ ");"
 generateStmtCode' (S_AutoCancelCommitment c) = "\n  cancelCommitments(" ++ generateCommitmentDSLCode c ++ ");"
 generateStmtCode' (S_FireEvent s)            = "\n  emit LogEvent(" ++ show s ++ ");"

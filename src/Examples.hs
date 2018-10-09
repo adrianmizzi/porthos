@@ -13,7 +13,7 @@ instance AssetType MyAssetType where
 -- Atomic Swap
 swap :: (Participant, Asset MyAssetType) -> (Participant, Asset MyAssetType) -> Contract
 swap (p1, a1) (p2, a2) = onUserCommit "p1Commit" (isCommitTo p2 .&. isAsset a1)
-                           doP2Commit
+                           doP2Commit 
                            (onTimeout 10 end)
   where
     doP2Commit = onUserCommit "p2Commit" (isCommitTo p1 .&. isAsset a2 .&. isCommitBy p2)
@@ -120,7 +120,7 @@ t1 :: Contract
 t1 = both (fireEvent "event 1" end, fireEvent "event 2" end)
 
 t2 :: Contract
-t2 = both (c1, c2) .>>>. fireEvent "ready" end .>>>. c3
+t2 = both (c1, c2) .>>>. fireEvent "ready" c3
   where
     c1 = fireEvent "starting c1"
            (onUserCommit "c1" (isCommitBy bob .&. isCommitTo alice) end
@@ -142,3 +142,8 @@ alice, bob, charlie :: Participant
 alice = Participant {name="alice", address="0xbc2c77f58bbc0b5dc7e0e2975363543f70fb6533"}
 bob = Participant {name="bob", address="0x627c8e2a90af606630dc1f4157cc41b95512e9b6"}
 charlie = Participant {name="charlie", address="0x93df89cb93a51f4655f12dbc0df865104b6d4e9a"}
+
+
+eurRegister, gbpRegister :: AssetRegister
+eurRegister = AssetRegister {regType = "EUR", blockchainSys=Ethereum_1}
+gbpRegister = AssetRegister {regType = "GBP", blockchainSys=Ethereum_2}
