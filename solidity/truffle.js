@@ -17,6 +17,7 @@ module.exports = {
   // to customize your Truffle configuration!
   networks: {
   development: {
+  	quiet: true,
     host: "127.0.0.1",
     port: 7545,
     network_id: "*" // Match any network id

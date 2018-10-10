@@ -139,11 +139,17 @@ t3 = x .>>>. y
 
 
 alice, bob, charlie :: Participant
-alice = Participant {name="alice", address="0xbc2c77f58bbc0b5dc7e0e2975363543f70fb6533"}
-bob = Participant {name="bob", address="0x627c8e2a90af606630dc1f4157cc41b95512e9b6"}
-charlie = Participant {name="charlie", address="0x93df89cb93a51f4655f12dbc0df865104b6d4e9a"}
+alice = Participant {name="alice", address="0xf1c13a88cf28c4d06269a150dd8cdb2e3061d44f"}
+bob = Participant {name="bob", address="0x4603bd7000aba82eab4aaea605df43a1e37ef2bb"}
+charlie = Participant {name="charlie", address="0xb9f62ffe791ff9fa9c51722e3b833bf51db290de"}
 
 
 eurRegister, gbpRegister :: AssetRegister
 eurRegister = AssetRegister {regType = "EUR", blockchainSys=Ethereum_1}
 gbpRegister = AssetRegister {regType = "GBP", blockchainSys=Ethereum_2}
+
+main :: Contract -> IO()
+main = generateSolidity [eurRegister, gbpRegister]
+
+main2 :: Contract -> IO()
+main2 = justStatements [eurRegister, gbpRegister]

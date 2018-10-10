@@ -4,9 +4,9 @@ import "./PorthosContract.sol";
 
 contract T2 is PorthosContract {
 
-  address alice = 0xed5356d32d00de3eb32dbafd96a04af60f49fa08;
-  address bob = 0x088f3ea1e40afb3ac90a78738c5ab97071ed8c6c;
-  address charlie = 0xc1a39c99ff252bcea57f0c2b8843a4ab445ab75d;
+  address alice = 0xf1c13a88cf28c4d06269a150dd8cdb2e3061d44f;
+  address bob = 0x4603bd7000aba82eab4aaea605df43a1e37ef2bb;
+  address charlie = 0xb9f62ffe791ff9fa9c51722e3b833bf51db290de;
 
 function continue_1() private
 {
@@ -35,7 +35,7 @@ function c3_commit(string _assetType, uint _quantity, address _recipient) public
 
 function c3_timeout() public
 {
-  if(block.number < 200)
+  if(block.number < 2)
     return;
   if(!isGateOpen("c3"))
     return;
@@ -53,10 +53,6 @@ constructor() public
   openGate("c1");
   emit LogEvent("starting c2");
   openGate("c2");
-  eurAssetRegistry.issueAssets(alice, 100);
-  eurAssetRegistry.issueAssets(bob, 100);
-  eurAssetRegistry.issueAssets(charlie, 100);
-
 }
 
 function c1_commit(string _assetType, uint _quantity, address _recipient) public

@@ -18,19 +18,14 @@ contract PorthosContract {
   event LogEvent(string message);
   mapping (string => bool) internal semaphore;
   mapping (string => uint8) private gateStatus;
+  mapping (string => FungibleAsset) internal assetRegisters;
   uint internal contractStatus = 0;
-
   Commitment[] commitments;
-
-  mapping (string => address) private assetRegisters;
-
-  FungibleAsset eurAssetRegistry;
-
   address owner;
 
-  constructor () public {
+  constructor () internal {
     owner = msg.sender;
-    eurAssetRegistry = new FungibleAsset(this);
+    // createAssetRegister(assetTypes[0]);
   }
 
   function issueAsset(string assetType, uint quantity, address recipient) public {
@@ -38,16 +33,16 @@ contract PorthosContract {
         revert("Only the owner can issue assets");
     }
 
-    require(assetRegisters[assetType].call(bytes4(keccak256("issueAssets(address, uint)")), recipient, quantity));
+    assetRegisters[assetType].issueAssets(recipient, quantity);
   }
 
-  function addAssetRegister (string assetType, address register) internal {
-    assetRegisters[assetType] = register;
+  function createAssetRegister (string assetType) public {
+    assetRegisters[assetType] = new FungibleAsset(this);
   }
 
   function addCommitment(Commitment c) internal {
     // transfer the ownership of the asset to this contract
-    eurAssetRegistry.transfer(c.sender, this, c.quantity);
+    assetRegisters[c.assetType].transfer(c.sender, this, c.quantity);
 
     // add to commitments
     commitments.push(c);
@@ -61,7 +56,7 @@ contract PorthosContract {
     require(c.status == 0, "Commitment status must be Open (0) to allow release");
 
     // transfer the ownership of the asset (in the commitment) to the recipient
-    require(assetRegisters[c.assetType].call(bytes4(keccak256("transfer(address, address, uint)")), this, c.recipient, c.quantity));
+    assetRegisters[c.assetType].transfer(this, c.recipient, c.quantity);
 
     // mark commitment as released
     commitments[_commitmentId].status = 1;
@@ -76,7 +71,7 @@ contract PorthosContract {
 
 
     // return the ownership of the asset (in the commitment) to the sender
-    require(assetRegisters[c.assetType].call(bytes4(keccak256("transfer(address, address, uint)")), this, c.sender, c.quantity));
+    assetRegisters[c.assetType].transfer(this, c.sender, c.quantity);
 
     // mark commitment as cancelled
     commitments[_commitmentId].status = 2;
@@ -150,18 +145,6 @@ contract PorthosContract {
     }
   }
 
-  function stringToUint(string s) internal pure returns (uint result) {
-      bytes memory b = bytes(s);
-      uint i;
-      result = 0;
-      for (i = 0; i < b.length; i++) {
-          uint c = uint(b[i]);
-          if (c >= 48 && c <= 57) {
-              result = result * 10 + (c - 48);
-          }
-      }
-  }
-
   function getAllCommitments() internal view returns (string) {
     uint arrayLength = commitments.length;
 
@@ -173,7 +156,14 @@ contract PorthosContract {
     return result;
   }
 
-  function uintToString(uint v) internal pure returns (string str) {
+  function fetchBalance(string _registry, address _address) public view returns (uint) {
+    return assetRegisters[_registry].getBalance(_address);
+  }
+
+
+  // utility methods below
+
+  function uintToString(uint v) private pure returns (string str) {
     uint maxlength = 100;
     bytes memory reversed = new bytes(maxlength);
     uint i = 0;
@@ -187,6 +177,18 @@ contract PorthosContract {
         s[j] = reversed[i - j - 1];
     }
     str = string(s);
+  }
+
+  function stringToUint(string s) private pure returns (uint result) {
+      bytes memory b = bytes(s);
+      uint i;
+      result = 0;
+      for (i = 0; i < b.length; i++) {
+          uint c = uint(b[i]);
+          if (c >= 48 && c <= 57) {
+              result = result * 10 + (c - 48);
+          }
+      }
   }
 
 

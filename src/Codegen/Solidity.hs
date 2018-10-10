@@ -3,11 +3,17 @@ module Codegen.Solidity where
 import           Porthos
 import           StatementGenerator
 
-generateSolidity :: Contract -> IO()
-generateSolidity c = do
+generateSolidity :: [AssetRegister] -> Contract -> IO()
+generateSolidity _ c = do
     resetCounters;
     let m = Method Public "constructor" MTConstructor [] []
     putStrLn (intro ++ generateCode (generateStatements m c) ++ "\n}")
+
+justStatements :: [AssetRegister] -> Contract -> IO()
+justStatements _ c = do
+    resetCounters;
+    let m = Method Public "constructor" MTConstructor [] []
+    putStr $ show $ generateStatements m c
 
 intro :: String
 intro = "pragma solidity ^0.4.24;\n\n" ++
@@ -40,7 +46,6 @@ generatePreConditions [] = ""
 generatePreConditions (p:pp) = generatePreCondition p ++ generatePreConditions pp
 
 generatePreCondition :: PreCondition -> String
--- generatePreCondition (PcState i)             = "\n  if(contractStatus != " ++ show i ++ ") \n    return;"
 generatePreCondition (PcFilter f)            = generateFilterCode f
 generatePreCondition (PcTimeout (Timeout t)) = "\n  if(block.number < " ++ show t ++ ") \n    return;"
 generatePreCondition (PcSemaphore s)         = "\n  if(!semaphore[" ++ show s ++ "]) \n    return;"
@@ -61,7 +66,6 @@ generateStmtCode (s:ss) = generateStmtCode' s ++ generateStmtCode ss
 
 generateStmtCode' :: Statement -> String
 generateStmtCode' S_AddCommitment            = "\n  addCommitment(Commitment({tagId: \"\", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));"
--- generateStmtCode' (S_UpdateState s)          = "\n  setContractStatus(" ++ show s ++ ");"
 generateStmtCode' (S_ReleaseCommitment c)    = "\n  releaseCommitments(" ++ generateCommitmentDSLCode c ++ ");"
 generateStmtCode' (S_AutoCancelCommitment c) = "\n  cancelCommitments(" ++ generateCommitmentDSLCode c ++ ");"
 generateStmtCode' (S_FireEvent s)            = "\n  emit LogEvent(" ++ show s ++ ");"

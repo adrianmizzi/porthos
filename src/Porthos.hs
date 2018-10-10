@@ -33,7 +33,7 @@ showI _ (Both c1 c2) = "Both (" ++ show c1 ++ ", " ++ show c2 ++ ")"
 data TxFilterExpr where
   NoTxFilter  :: TxFilterExpr
   AndTF       :: TxFilterExpr -> TxFilterExpr -> TxFilterExpr
-  OrTF        :: TxFilterExpr -> TxFilterExpr -> TxFilterExpr
+  -- OrTF        :: TxFilterExpr -> TxFilterExpr -> TxFilterExpr
   Sender      :: Participant -> TxFilterExpr
   Recipient   :: Participant -> TxFilterExpr
   AssetIs     :: (AssetType t) => Asset t -> TxFilterExpr
@@ -42,7 +42,7 @@ data TxFilterExpr where
 instance Show TxFilterExpr where
   show NoTxFilter      = "No Filter"
   show (AndTF f1 f2)   = "(" ++ show f1 ++ ") and (" ++ show f2 ++ ")"
-  show (OrTF f1 f2)    = "(" ++ show f1 ++ ") or (" ++ show f2 ++ ")"
+  -- show (OrTF f1 f2)    = "(" ++ show f1 ++ ") or (" ++ show f2 ++ ")"
   show (Sender p)      = "Sender = " ++ show p
   show (Recipient p)   = "Participant = " ++ show p
   show (AssetIs a)     = "Asset = " ++ show a
@@ -50,7 +50,7 @@ instance Show TxFilterExpr where
 
 class Filter a where
   and :: a -> a -> a
-  or  :: a -> a -> a
+  -- or  :: a -> a -> a
   (.&.) :: a -> a -> a
   x .&. y = Porthos.and x y
   -- (.|.) :: a -> a -> a
@@ -58,7 +58,7 @@ class Filter a where
 
 instance Filter TxFilterExpr where
   and = AndTF
-  or  = OrTF
+  -- or  = OrTF
 
 -- DO NOT DELETE
 -- instance Filter ConditionFilter where
