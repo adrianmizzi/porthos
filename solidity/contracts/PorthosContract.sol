@@ -2,6 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./FungibleAsset.sol";
 import "./strings.sol";
+import "./NotaryConnector.sol";
 
 contract PorthosContract {
   using strings for *;
@@ -15,7 +16,6 @@ contract PorthosContract {
       uint status; // 0 = open; 1 = released; 2 = cancelled
   }
 
-  event LogEvent(string message);
   mapping (string => bool) internal semaphore;
   mapping (string => uint8) private gateStatus;
   mapping (string => FungibleAsset) internal assetRegisters;
@@ -23,21 +23,31 @@ contract PorthosContract {
   Commitment[] commitments;
   address owner;
 
+  NotaryConnector internal notary;
+
+  function fireEvent(string _message) public {
+    notary.fireMessage(_message);
+  }
+
   constructor () internal {
     owner = msg.sender;
-    // createAssetRegister(assetTypes[0]);
+    
+    addAssetRegister("EUR", new FungibleAsset(msg.sender));
+    addAssetRegister("GBP", new FungibleAsset(msg.sender));
+
+    // notary = new NotaryConnector();
+  }
+
+  function addAssetRegister (string assetType, FungibleAsset _registry) public {
+    assetRegisters[assetType] = _registry;
+  }
+
+  function revokeAllAssets(string assetType, address recipient) public {
+    assetRegisters[assetType].revokeAllAssets(recipient);
   }
 
   function issueAsset(string assetType, uint quantity, address recipient) public {
-    if (owner != msg.sender) {
-        revert("Only the owner can issue assets");
-    }
-
     assetRegisters[assetType].issueAssets(recipient, quantity);
-  }
-
-  function createAssetRegister (string assetType) public {
-    assetRegisters[assetType] = new FungibleAsset(this);
   }
 
   function addCommitment(Commitment c) internal {
@@ -110,8 +120,8 @@ contract PorthosContract {
   }
 
   function releaseCommitments(string _commitments) internal {
-    var s = _commitments.toSlice();
-    var delim = ",".toSlice();
+    strings.slice memory s = _commitments.toSlice();
+    strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
 
     for (uint i = 0; i < parts.length; i++) {
@@ -128,8 +138,8 @@ contract PorthosContract {
   }
 
   function cancelCommitments(string _commitments) internal {
-    var s = _commitments.toSlice();
-    var delim = ",".toSlice();
+    strings.slice memory s = _commitments.toSlice();
+    strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
 
     for (uint i = 0; i < parts.length; i++) {
@@ -190,6 +200,4 @@ contract PorthosContract {
           }
       }
   }
-
-
 }

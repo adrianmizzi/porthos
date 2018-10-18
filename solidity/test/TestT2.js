@@ -1,4 +1,5 @@
 const T2 = artifacts.require('./T2.sol');
+const Notary = artifacts.require('./NotaryConnector.sol');
 
 contract('T2', function (accounts) {
   let app;
@@ -8,16 +9,15 @@ contract('T2', function (accounts) {
   const charlie = accounts[3];
 
   beforeEach('Initialise contract', async () => {
-    app = await T2.new();
-
-    // create asset registers
-    await app.createAssetRegister("EUR");
-    await app.createAssetRegister("GBP");
+    notary = await Notary.new();
+    app = await T2.new(alice, bob, charlie, notary.address);
 
     // issue assets
-    await app.issueAsset("EUR",100,alice);
-    await app.issueAsset("EUR", 100,bob);
-    await app.issueAsset("GBP", 100,charlie);
+    await app.issueAsset("EUR", 100, alice);
+    await app.issueAsset("EUR", 100, bob);
+    await app.issueAsset("GBP", 100, charlie);
+
+    console.log(app.address);
   });
 
   it('Alice Commit First', async () => {
@@ -33,9 +33,9 @@ contract('T2', function (accounts) {
     // check status is 0
     assert.equal(web3.toDecimal(result[4]), 0);
 
-    console.log(result[0], result[1].toString());
-    console.log(result[2].toString(), "to", result[3].toString());
-    console.log("Status", result[4].toString());
+    // console.log(result[0], result[1].toString());
+    // console.log(result[2].toString(), "to", result[3].toString());
+    // console.log("Status", result[4].toString());
   });
 
   it('Bob Commit First', async () => {
@@ -51,10 +51,9 @@ contract('T2', function (accounts) {
     // check status is 0
     assert.equal(web3.toDecimal(result[4]), 0);
 
-
-    console.log(result[0], result[1].toString());
-    console.log(result[2].toString(), "to", result[3].toString());
-    console.log("Status", result[4].toString());
+    // console.log(result[0], result[1].toString());
+    // console.log(result[2].toString(), "to", result[3].toString());
+    // console.log("Status", result[4].toString());
   });
 
   it('Alice then Bob Commit', async () => {
