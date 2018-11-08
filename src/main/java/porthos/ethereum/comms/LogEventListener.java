@@ -1,63 +1,74 @@
 package porthos.ethereum.comms;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.web3j.abi.EventEncoder;
+import org.web3j.crypto.Credentials;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.request.EthFilter;
+import org.web3j.tx.Contract;
+import org.web3j.tx.ManagedTransaction;
+
+import porthos.ethereum.Web3jInstance;
+import porthos.ethereum.Web3jManager;
+import porthos.ethereum.Web3jManager.Blockchain;
+import porthos.ethereum.contracts.generated.Gateway;
+
 public class LogEventListener {
-//    private static final Logger log = LoggerFactory.getLogger(LogEventListener.class);
-//    private static CallbackHandler callbackManager;
-//
-//    
-//    public static void main(String[] args) throws Exception {
-//    	callbackManager = new CallbackHandler();
-//        new LogEventListener().run();
-//    }
-//
-//    private void run() throws Exception {
-//        // We start by creating a new web3j instance to connect to remote nodes on the network.
-//        // Note: if using web3j Android, use Web3jFactory.build(...
-//        Web3j web3j = Web3jManager.getWeb3jInstance(Blockchain.ETHEREUM_PUBLIC).getWeb3j();
-//        log.info("Connected to Ethereum client version: "
-//                + web3j.web3ClientVersion().send().getWeb3ClientVersion());
-//
-//        // We provide a private key to create credentials
-//        Credentials credentials = Web3jManager.getCredentials();
-//        log.info("Credentials loaded");
-//        
-//
-//        // Let's connect to a previously deployed contract
-//        log.info("Connecting to previously deployed smart contract");
-//        EventGenerator contract = EventGenerator.load("0x87f47521b1cad0c6bc7e8c99317de44c4e107505",
-//                web3j, credentials,
-//                ManagedTransaction.GAS_PRICE, Contract.GAS_LIMIT);
-//        
-//        String contractAddress = contract.getContractAddress();
-//        log.info("Smart contract deployed to address " + contractAddress);
-//
-//        
-////        EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, contractAddress.substring(2));
-////        
-////        String encodedEventSignature = EventEncoder.encode(EventGenerator.LOG_EVENT);
-////
-////        filter.addSingleTopic(encodedEventSignature);
-////        
-////        log.info("subscribing to event with filter");
-////        
-////        web3j.ethLogObservable(filter).subscribe(eventString -> log.info("event string={}", eventString.toString()));
-//        
-//        log.info("Start Observer");
-//        EthFilter filter2 = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, contractAddress.substring(2));
-//
-//        contract.logEventObservable(filter2)  
-//        		.subscribe(event -> {
-//        			log.info("Received Log Event [{}]: {}", event.blockNumber, event.message);
-//        		});
-//        
-//        CallbackHandler cbHandler = new CallbackHandler();
-//        
-//        contract.callbackRequestEventObservable(filter2)
-//        		.subscribe(event -> {
-//        			log.info("Received callback request {}, {} at time {}", event.contractAddress, event.methodName, event.timeRequested);
-//        			cbHandler.addCallback(new CallbackInfo(event.contractAddress, event.methodName, event.timeRequested));
-//        		});
-//    }
+	private static final Logger log = LoggerFactory.getLogger(LogEventListener.class);
+
+	private static String gatewayAddress;
+	private Gateway gateway;
+
+	public LogEventListener(Blockchain bcSystem, String _gatewayAddress) throws Exception  {
+		Web3jInstance web3jI = Web3jManager.getWeb3jInstance(bcSystem);
+		gatewayAddress = _gatewayAddress;
+
+		Web3j web3j = web3jI.getWeb3j(); 
+		Credentials credentials = web3jI.getCredentials(); 
+
+		// create an instance of the gateway
+		gateway = Gateway.load(gatewayAddress,
+				web3j, credentials,
+				ManagedTransaction.GAS_PRICE, Contract.GAS_LIMIT);
+
+		log.info("Filtering to receive latest events");
+		EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
+		filter.addSingleTopic(EventEncoder.encode(Gateway.LOG_EVENT));
+
+		// listen on log events
+		gateway.logEventObservable(filter)  
+		.subscribe(event -> {
+			log.info("Received Log Event [{}]: {}", event.blockNumber, event.message);
+			
+		}, err  -> {
+			log.error("Error on log event", err);
+		});
+
+
+		filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
+		filter.addSingleTopic(EventEncoder.encode(Gateway.GATEOPENED_EVENT));
+
+		// listen on log events
+		gateway.gateOpenedEventObservable(filter)  
+		.subscribe(event -> {
+			log.info("Gate {} is open on {}", event.gateName, bcSystem);
+		}, err  -> {
+			log.error("Error on log event", err);
+		});
+
+		filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
+		filter.addSingleTopic(EventEncoder.encode(Gateway.GATECLOSED_EVENT));
+
+		// listen on log events
+		gateway.gateClosedEventObservable(filter)  
+		.subscribe(event -> {
+			log.info("Gate {} is closed on {}", event.gateName, bcSystem);
+		}, err  -> {
+			log.error("Error on log event", err);
+		});
+	}
 }
 
 

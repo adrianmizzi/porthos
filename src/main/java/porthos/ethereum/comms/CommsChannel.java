@@ -38,12 +38,12 @@ public class CommsChannel {
 				web3j, credentials,
 				ManagedTransaction.GAS_PRICE, Contract.GAS_LIMIT);
 
-		EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gateway.getContractAddress().substring(2));
-        filter.addSingleTopic(EventEncoder.encode(Gateway.CROSSCHAIN_EVENT));
-
 		// add to our map
 		gateways.put(system, gateway);
 		
+		EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gateway.getContractAddress().substring(2));
+        filter.addSingleTopic(EventEncoder.encode(Gateway.CROSSCHAIN_EVENT));
+
 		gateway.crossChainEventObservable(filter)  
 		.subscribe(event -> {
 			log.info("Received Cross Chain Call {} / {}", event.blockchainSystem, event.methodName);
@@ -53,11 +53,53 @@ public class CommsChannel {
 				log.error("Unable to execute cross chain call", e);
 			}
 		});
+		
+		filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gateway.getContractAddress().substring(2));
+        filter.addSingleTopic(EventEncoder.encode(Gateway.CCOPENGATE_EVENT));
+
+		gateway.cCOpenGateEventObservable(filter)  
+		.subscribe(event -> {
+			log.info("{} Received Cross Chain: Open Gate Call {}: {}-{}", system, event.blockchainSystem, event.assetType, event.gateName);
+			try {
+				openGateCall(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType, event.gateName);
+			} catch (Exception e) {
+				log.error("Unable to execute cross chain call", e);
+			}
+		});
+		
+		filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gateway.getContractAddress().substring(2));
+        filter.addSingleTopic(EventEncoder.encode(Gateway.CCRELEASECOMMITMENTS_EVENT));
+
+		gateway.cCReleaseCommitmentsEventObservable(filter)  
+		.subscribe(event -> {
+			log.info("{} Received Cross Chain: Release All Commitments Call {}: {}", system, event.blockchainSystem, event.assetType);
+			try {
+				releaseAllCommitment(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType);
+			} catch (Exception e) {
+				log.error("Unable to execute cross chain call", e);
+			}
+		});
+
 	}
 	
-	private void crosschainCall(Blockchain system, String contractAddress, String methodName) throws Exception {
-		Gateway gateway = gateways.get(system);
-		log.info("Initiating cross chain call {} {}", contractAddress, methodName);
-		gateway.call(contractAddress, methodName).send();
+	private void crosschainCall(Blockchain _system, String _contractAddress, String _methodName) throws Exception {
+		Gateway gateway = gateways.get(_system);
+		log.info("Initiating cross chain call {} {}", _contractAddress, _methodName);
+		gateway.call(_contractAddress, _methodName).send();
+	}
+	
+	private void openGateCall(Blockchain _system, String _contractAddress, String _assetType, String _gateName) throws Exception {
+		Gateway gateway = gateways.get(_system);
+		log.info("Initiating cross chain open gate call {} {} for gate {}", _system.toString(), _assetType, _gateName);
+		gateway.openGateCall(_contractAddress, _assetType, _gateName).send();
+		log.info("Open Gate Call complete");
+	}
+	
+	private void releaseAllCommitment(Blockchain _system, String _contractAddress, String _assetType) throws Exception {
+		Gateway gateway = gateways.get(_system);
+		log.info("Initiating cross chain release all commitments call {} {}", _system.toString(), _assetType);
+		log.info("Calling contract {}", _contractAddress);
+		gateway.releaseAllCommitmentsCall(_contractAddress, _assetType).send();
+		log.info("Release All Commitments Call complete");
 	}
 }

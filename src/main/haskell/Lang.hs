@@ -28,22 +28,22 @@ commitWithTagAndId n t tf continueWith (timeout, c) tag cId=
 
 repeatCommit :: (AssetType t) => (ActionName, t, TxFilterExpr) -> (Timeout, Contract) -> Contract
 repeatCommit (n, at, tf) (timeout, c) =
-  RepeatUserAction n at tf (Commit NoId NoTag) timeout c
-
-autoCancel :: Commitment -> Contract -> Contract
-autoCancel commitment = AutoAction (AutoCancelCommit commitment)
+  RepeatUserAction n at (tf .&. isAssetType at) (Commit NoId NoTag) timeout c
 
 autoRelease :: Commitment -> Contract -> Contract
 autoRelease commitment = AutoAction (Release commitment)
+
+autoCancel :: Commitment -> Contract -> Contract
+autoCancel commitment = AutoAction (Cancel commitment)
 
 onTimeout :: Time -> Contract -> (Timeout, Contract)
 onTimeout t c = (Timeout t, c)
 
 releaseAll :: Contract -> Contract
-releaseAll = AutoAction (Release AllCommitments)
+releaseAll = AutoAction ReleaseAll
 
 cancelAll :: Contract -> Contract
-cancelAll = AutoAction (AutoCancelCommit AllCommitments)
+cancelAll = AutoAction AutoCancelAll
 
 isCommitTo :: Participant -> TxFilterExpr
 isCommitTo = Recipient
@@ -54,8 +54,8 @@ isCommitBy = Sender
 isAsset :: (AssetType t) => Asset t -> TxFilterExpr
 isAsset = AssetIs
 
--- isAssetType :: (AssetType t) => t -> TxFilterExpr
--- isAssetType = AssetTypeIs
+isAssetType :: (AssetType t) => t -> TxFilterExpr
+isAssetType = AssetTypeIs
 
 ifThenElse :: CBool -> (Contract, Contract) -> Contract
 ifThenElse cond (c1, c2) = IfThenElse cond c1 c2
@@ -63,9 +63,13 @@ ifThenElse cond (c1, c2) = IfThenElse cond c1 c2
 fireEvent :: String -> Contract -> Contract
 fireEvent = FireEvent
 
+-- assetType :: (AssetType t) => Asset t -> t
+-- assetType (Asset t _) = t
+-- assetType (Sum t _)   = t
+-- assetType (Add x _)   = assetType x
+
 assetType :: (AssetType t) => Asset t -> t
-assetType (Asset t _) = t
-assetType (Sum t _)   = t
+assetType = Porthos.getAssetType
 
 followedBy :: Contract -> Contract -> Contract
 followedBy = FollowedBy
@@ -101,21 +105,22 @@ x .||. y = COr x y
 (.+.) :: (AssetType t) => Asset t -> Asset t -> Asset t
 x .+. y = Add x y
 
-exchange :: (AssetType tx, AssetType ty) => (Asset tx, Asset ty) -> Asset ty -> Asset tx
-exchange (Asset a _, Asset _ q2) (Asset _ q) = Asset a (q * q2) -- / q1))
+exchange :: (AssetType tx, AssetType ty) => (tx, ty, Float) -> Asset tx -> Asset ty
+exchange (_, b, f) (Asset _ q) = Asset b (round (f * fromIntegral q))
+exchange (a, b, f) x = Convert (a, b, f) x
 
 -- Commitments
 allCommitments :: Commitment
 allCommitments = AllCommitments
 
-whereCommitterIs :: Participant -> Commitment -> Commitment
-whereCommitterIs = WhereCommitter
+whereCommitterIs :: (Participant, Commitment) -> Commitment
+whereCommitterIs (p, c) = WhereCommitter p c
 
-whereRecipientIs :: Participant -> Commitment -> Commitment
-whereRecipientIs = WhereRecipient
+whereRecipientIs :: (Participant, Commitment) -> Commitment
+whereRecipientIs (p, c) = WhereRecipient p c
 
-whereAssetTypeIs :: (AssetType t) => t -> Commitment -> Commitment
-whereAssetTypeIs = WhereAssetType
+whereAssetTypeIs :: (AssetType t) => (t, Commitment) -> Commitment
+whereAssetTypeIs (t, c) = WhereAssetType t c
 
 orderByParticipant :: Order -> Commitment -> Commitment
 orderByParticipant = OrderCF CParticipantField
@@ -129,8 +134,9 @@ desc = DESC
 selectAll :: (Commitment -> Commitment) -> Commitment -> Commitment
 selectAll f = f
 
-sumC :: (Show t, AssetType t) => t -> Commitment -> Asset t
-sumC = Sum
+sumC :: (Show t, AssetType t) => (t, Commitment) -> Asset t
+sumC (assetType, commitments) = Sum assetType commitments
 
 countC :: Commitment -> N
 countC = Count
+

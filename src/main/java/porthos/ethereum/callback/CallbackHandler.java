@@ -53,19 +53,19 @@ public class CallbackHandler {
         		web3j, credentials,
         		ManagedTransaction.GAS_PRICE, Contract.GAS_LIMIT);
         
-        log.info("Filtering to receive latest events");
+//        log.info("Filtering to receive latest events");
+//        EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
+//        filter.addSingleTopic(EventEncoder.encode(Gateway.LOG_EVENT));
+//        
+//        // listen on log events
+//        gateway.logEventObservable(filter)  
+//        		.subscribe(event -> {
+//        			log.info("Received Log Event [{}]: {}", event.blockNumber, event.message);
+//        		}, err  -> {
+//        			log.error("Error on log event", err);
+//        		});
+        
         EthFilter filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
-        filter.addSingleTopic(EventEncoder.encode(Gateway.LOG_EVENT));
-        
-        // listen on log events
-        gateway.logEventObservable(filter)  
-        		.subscribe(event -> {
-        			log.info("Received Log Event [{}]: {}", event.blockNumber, event.message);
-        		}, err  -> {
-        			log.error("Error on log event", err);
-        		});
-        
-        filter = new EthFilter(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST, gatewayAddress.substring(2));
         filter.addSingleTopic(EventEncoder.encode(Gateway.CALLBACKREQUEST_EVENT));
 
         // start listening for callback requests
@@ -92,6 +92,10 @@ public class CallbackHandler {
 
     }
     
+    /**
+     * Adds a callback 
+     * @param cot
+     */
     public void addCallback(CallbackInfo cot) {
     	synchronized(callbacks) {
 	    	callbacks.add(cot);
@@ -99,6 +103,10 @@ public class CallbackHandler {
     	}
     }
     
+    /**
+     * Cancels a callback
+     * @param cot
+     */
     public void cancelCallback(CallbackInfo cot) {
     	synchronized(callbacks) {
 	    	callbacks.remove(cot);
@@ -106,6 +114,11 @@ public class CallbackHandler {
     	}
     }
 
+    /**
+     * When the block time changes, this method goes through all the callbacks
+     * to check if any of them is due for activation
+     * @param blockTime
+     */
     private synchronized void blockClock(BigInteger blockTime) {
     	synchronized (callbacks) { 
 	    	Iterator<CallbackInfo> it = callbacks.iterator();
@@ -122,13 +135,17 @@ public class CallbackHandler {
 		    			it.remove();
 					} catch (Exception e) {
 						log.error("Unable to trigger callback", e);
-					}
-	    			
+					}	
 	    		}
 	    	}
     	}
     }
     
+    /**
+     * Triggers the callback on the smart contract
+     * @param cot
+     * @throws Exception
+     */
     private void triggerCallback(CallbackInfo cot) throws Exception {
     	String contractAddress = cot.getContractAddress();
     	String methodName      = cot.getMethodName();
