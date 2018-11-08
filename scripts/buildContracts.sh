@@ -3,12 +3,16 @@
 set -e
 set -o pipefail
 
-baseDir="../src/main/resources/solidity"
+baseDir="../src/main/solidity"
 
 targets="
 framework/Gateway
-app/T1
+framework/FungibleAsset
+framework/PorthosContract
+app/PropSale
 "
+#app/Ethereum_1
+#app/Ethereum_2
 
 
 for target in ${targets}; do
@@ -28,7 +32,7 @@ for target in ${targets}; do
         ${dirName}/build/${fileName}.bin \
         ${dirName}/build/${fileName}.abi \
         -p porthos.ethereum.contracts.generated \
-        -o ../../java/ > /dev/null
+        -o ../../main/java/ > /dev/null
     echo "Complete"
 
     cd -
