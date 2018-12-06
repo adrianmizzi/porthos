@@ -28,7 +28,7 @@ library:
 executables:
   porthos-exe:
     main:                Examples.hs
-    source-dirs:         app
+    source-dirs:         src/main/haskell
     ghc-options:
     - -threaded
     - -rtsopts

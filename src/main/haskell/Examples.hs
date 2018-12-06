@@ -1,9 +1,9 @@
 module Examples where
 
 
+import           General
 import           Lang
 import           Porthos
-import           General
 
 
 alice, bob, charlie :: Participant
@@ -24,18 +24,18 @@ instance AssetType MyAssetType where
 
 -- Atomic Swap
 swap :: (Participant, Asset MyAssetType) -> (Participant, Asset MyAssetType) -> Contract
-swap (p1, a1) (p2, a2) = onUserCommit ("p1Commit", EUR, (isCommitTo p2 .&. isAsset a1))
+swap (p1, a1) (p2, a2) = onUserCommit "p1Commit" (EUR, (isCommitTo p2 .&. isAsset a1))
                            doP2Commit 
                            (onTimeout 10 end)
   where
-    doP2Commit = onUserCommit ("p2Commit", GBP, (isCommitTo p1 .&. isAsset a2 .&. isCommitBy p2))
+    doP2Commit = onUserCommit "p2Commit" (GBP, (isCommitTo p1 .&. isAsset a2 .&. isCommitBy p2))
                     (releaseAll end)
                     (onTimeout 20 (cancelAll end))
 
 -- Crowdfunding
 crowdFunding :: Participant -> Asset Currency -> Contract
 crowdFunding recipient target
-          = repeatCommit ("fund", EUR, isCommitTo recipient)
+          = repeatCommit "fund" (EUR, isCommitTo recipient)
               (onTimeout 100 closeCampaign)
   where
     aType = assetType target
@@ -51,26 +51,26 @@ groupPay yy recipient = allOf (userCommits yy) `followedBy`
                             (releaseAll end,
                             cancelAll end)
   where
-    userCommits = map (\x -> onUserCommit (name (fst x), EUR, txFilter x) end (onTimeout 100 end))
+    userCommits = map (\x -> onUserCommit (name (fst x)) (EUR, txFilter x) end (onTimeout 100 end))
     txFilter (a, b) = isCommitTo recipient .&. isCommitBy a .&. isAsset b
 
 allOf :: [Contract] -> Contract
 allOf []     = Null
 allOf [c]    = c
-allOf (c:cc) = Both c (allOf cc)
+allOf (c:cc) = both (c, allOf cc)
 
 -- Time-locked piggy bank
 piggy :: Participant -> Time -> Contract
-piggy recipient expiryTime = repeatCommit ("save", Apple, isCommitTo recipient)
+piggy recipient expiryTime = repeatCommit "save" (Apple, isCommitTo recipient)
                                (onTimeout expiryTime (releaseAll end))
 
 -- Crowdfunding on multiple assets
 crowdFunding2 :: Participant -> (Currency, Currency, Float) -> Asset Currency -> Contract
 crowdFunding2 recipient (x, y, f) targetY = both (campaignX, campaignY) `followedBy` closeCampaign
   where
-    campaignX = repeatCommit ("fundX", x, isCommitTo recipient)
+    campaignX = repeatCommit "fundX" (x, isCommitTo recipient)
                   (onTimeout 100 end)
-    campaignY = repeatCommit ("fundY", y, isCommitTo recipient)
+    campaignY = repeatCommit "fundY" (y, isCommitTo recipient)
                   (onTimeout 100 end)
     closeCampaign = ifThenElse (totalY .>. targetY)
                       (releaseAll (fireEvent "Campaign Successful" end),
@@ -108,23 +108,23 @@ propSale :: (Participant, Asset Property)
               -> Participant -> Asset Currency -> Asset Currency
               -> Participant -> Contract
 propSale (seller, property) buyer deposit balance notary =
-            onUserCommit ("commitProperty", getAssetType property, isCommitTo buyer .&. isCommitBy seller .&. isAsset property)
+            onUserCommit "commitProperty" (getAssetType property, isCommitTo buyer .&. isCommitBy seller .&. isAsset property)
               doBuyerCommit
               (onTimeout 10 end)
   where
-    doBuyerCommit   = onUserCommit ("payDeposit", EUR, isCommitBy buyer .&. isCommitTo seller .&. isAsset deposit)
+    doBuyerCommit   = onUserCommit "payDeposit" (EUR, isCommitBy buyer .&. isCommitTo seller .&. isAsset deposit)
                         doBalanceCommit
                         (onTimeout 20 (cancelAll end))
-    doBalanceCommit = onUserCommit ("payBalance", EUR, isCommitTo seller .&. isAsset balance) -- buyer or bank submits balance
+    doBalanceCommit = onUserCommit "payBalance" (EUR, isCommitTo seller .&. isAsset balance) -- buyer or bank submits balance
                         (oneOf (notaryApproval, notaryRejection))
                         (onTimeout 100 sellerTakesAll)
     sellerTakesAll  = autoRelease (whereRecipientIs(seller, allCommitments))
                         (autoCancel (whereCommitterIs(seller, allCommitments))
                           end)
-    notaryApproval  = onUserCommit ("approved", ApprovedByNotary, isCommitBy notary .&. isCommitTo notary)
+    notaryApproval  = onUserCommit "approved" (ApprovedByNotary, isCommitBy notary .&. isCommitTo notary)
                        (releaseAll end)
                        (onTimeout 200 (cancelAll end))
-    notaryRejection = onUserCommit ("rejected", RejectedByNotary, isCommitBy notary .&. isCommitTo notary)
+    notaryRejection = onUserCommit "rejected" (RejectedByNotary, isCommitBy notary .&. isCommitTo notary)
                         (cancelAll end)
                         (onTimeout 200 (cancelAll end))
 
@@ -148,20 +148,20 @@ t2 :: Contract
 t2 = both (c1, c2) .>>>. fireEvent "ready" c3
   where
     c1 = fireEvent "starting c1"
-           (onUserCommit ("c1", EUR, isCommitBy bob .&. isCommitTo alice) end
+           (onUserCommit "c1" (EUR, isCommitBy bob .&. isCommitTo alice) end
              (onTimeout 200 end))
     c2 = fireEvent "starting c2"
-           (onUserCommit ("c2", GBP, isCommitBy alice .&. isCommitTo bob) end
+           (onUserCommit "c2" (GBP, isCommitBy alice .&. isCommitTo bob) end
              (onTimeout 200 end))
-    c3 = onUserCommit ("c3", EUR, isCommitBy charlie .&. isCommitTo bob) (releaseAll end)
+    c3 = onUserCommit "c3" (EUR, isCommitBy charlie .&. isCommitTo bob) (releaseAll end)
           (onTimeout 200 (cancelAll end))
 
 t3 :: Contract
 t3 = both (c1, c2) .>>>. releaseAll end
   where
-    c1 = onUserCommit ("c1", EUR, isCommitBy bob .&. isCommitTo alice) end
+    c1 = onUserCommit "c1" (EUR, isCommitBy bob .&. isCommitTo alice) end
              (onTimeout 200 end)
-    c2 = onUserCommit ("c2", GBP, isCommitBy alice .&. isCommitTo bob) end
+    c2 = onUserCommit "c2" (GBP, isCommitBy alice .&. isCommitTo bob) end
              (onTimeout 200 end)
 
 t4 :: Contract
@@ -178,8 +178,9 @@ t5 = ifThenElse (sumC(USD, commitments) .<=. asset (USD, 100)) (c1, c2)
 
       commitments = whereCommitterIs(alice, allCommitments)
 
-
-
+-- just an example on how to instantiate contracts
+runExample :: IO[()]
+runExample = toScreen mem t3
 
 
 

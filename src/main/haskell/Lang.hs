@@ -13,8 +13,8 @@ end = Null
 -- cancel (n, tf, commitment, continueWith, timeout, c') =
 --   UserAction n tf (CancelCommit commitment) continueWith timeout c'
 
-onUserCommit :: (AssetType t) => (ActionName, t, TxFilterExpr) -> Contract -> (Timeout, Contract) -> Contract
-onUserCommit (n, t, x) c y = commitWithTagAndId n t x c y NoTag NoId
+onUserCommit :: (AssetType t) => ActionName -> (t, TxFilterExpr) -> Contract -> (Timeout, Contract) -> Contract
+onUserCommit n (t, x) c y = commitWithTagAndId n t x c y NoTag NoId
 
 commitWithTag :: (AssetType t) => ActionName -> t -> TxFilterExpr -> Contract -> (Timeout, Contract) -> TagId -> Contract
 commitWithTag n t x c y tag = commitWithTagAndId n t x c y tag NoId
@@ -26,8 +26,8 @@ commitWithTagAndId :: (AssetType t) => ActionName -> t -> TxFilterExpr -> Contra
 commitWithTagAndId n t tf continueWith (timeout, c) tag cId=
   UserAction n t tf (Commit cId tag) continueWith timeout c
 
-repeatCommit :: (AssetType t) => (ActionName, t, TxFilterExpr) -> (Timeout, Contract) -> Contract
-repeatCommit (n, at, tf) (timeout, c) =
+repeatCommit :: (AssetType t) => ActionName -> (t, TxFilterExpr) -> (Timeout, Contract) -> Contract
+repeatCommit n (at, tf) (timeout, c) =
   RepeatUserAction n at (tf .&. isAssetType at) (Commit NoId NoTag) timeout c
 
 autoRelease :: Commitment -> Contract -> Contract
