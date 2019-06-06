@@ -1,4 +1,5 @@
-pragma solidity ^0.4.24;
+// pragma solidity ^0.4.24;
+pragma solidity ^0.5.4;
 
 import "./FungibleAsset.sol";
 import "./strings.sol";
@@ -43,16 +44,16 @@ contract PorthosContract {
 
   Gateway internal gateway;
 
-  function fireEvent(string _message) public {
+  function fireEvent(string memory _message) public {
     gateway.fireMessage(_message);
   }
 
-  constructor (string _blockchainSystem) internal {
+  constructor (string memory _blockchainSystem) internal {
     owner = msg.sender;
     ownName = _blockchainSystem;
   }
 
-  function setMaster(string _masterName, address _master) public {
+  function setMaster(string memory _masterName, address _master) public {
     if (msg.sender != owner) 
       return;
 
@@ -68,7 +69,7 @@ contract PorthosContract {
    * This function stores a mapping from asset type to which blockchain manages that asset.
    * Here we assume that one asset is only managed by one blockchain
    */
-  function addAssetManager(string _assetType, string _blockchainSystem, address _contractAddress) public {
+  function addAssetManager(string memory _assetType, string memory _blockchainSystem, address _contractAddress) public {
     assetManager[_assetType] = AssetManager({assetType : _assetType, blockchainSystem : _blockchainSystem, contractAddress : _contractAddress});
     managerArray.push(AssetManager({assetType : _assetType, blockchainSystem : _blockchainSystem, contractAddress : _contractAddress}));
   }
@@ -76,22 +77,22 @@ contract PorthosContract {
   /**
    * Adds an asset register to indicate that this asset is managed by this blockchain system
    */
-  function addAssetRegister (string assetType) public returns (address) {
+  function addAssetRegister (string memory assetType) public returns (address) {
     assetRegisters[assetType] = new FungibleAsset(msg.sender);
-    return assetRegisters[assetType];
+    return address(assetRegisters[assetType]);
   }
 
   /**
    * Revokes all assets of type assetType for the recipient
    */
-  function revokeAllAssets(string assetType, address recipient) public {
+  function revokeAllAssets(string memory assetType, address recipient) public {
     assetRegisters[assetType].revokeAllAssets(recipient);
   }
 
   /**
    * Issues an asset of type assetType, with the specific quantity to recipient
    */
-  function issueAsset(string assetType, uint quantity, address recipient) public {
+  function issueAsset(string memory assetType, uint quantity, address recipient) public {
     if (msg.sender != owner) {
       return;
     }
@@ -99,9 +100,9 @@ contract PorthosContract {
     assetRegisters[assetType].issueAssets(recipient, quantity);
   }
 
-  function addCommitment(Commitment c) internal {
+  function addCommitment(Commitment memory c) internal {
     // transfer the ownership of the asset to this contract
-    assetRegisters[c.assetType].transfer(c.sender, this, c.quantity);
+    assetRegisters[c.assetType].transfer(c.sender, address(this), c.quantity);
 
     // add to commitments
     commitments.push(c);
@@ -115,7 +116,7 @@ contract PorthosContract {
     require(c.status == 0, "Commitment status must be Open (0) to allow release");
 
     // transfer the ownership of the asset (in the commitment) to the recipient
-    assetRegisters[c.assetType].transfer(this, c.recipient, c.quantity);
+    assetRegisters[c.assetType].transfer(address(this), c.recipient, c.quantity);
 
     // mark commitment as released
     commitments[_commitmentId].status = 1;
@@ -130,13 +131,13 @@ contract PorthosContract {
 
 
     // return the ownership of the asset (in the commitment) to the sender
-    assetRegisters[c.assetType].transfer(this, c.sender, c.quantity);
+    assetRegisters[c.assetType].transfer(address(this), c.sender, c.quantity);
 
     // mark commitment as cancelled
     commitments[_commitmentId].status = 2;
   }
 
-  function fetchCommitment(uint _commitmentId) public view returns (string, uint, address, address, uint) {
+  function fetchCommitment(uint _commitmentId) public view returns (string memory, uint, address, address, uint) {
     return (commitments[_commitmentId].assetType,
             commitments[_commitmentId].quantity,
             commitments[_commitmentId].sender,
@@ -157,7 +158,7 @@ contract PorthosContract {
    * If the asset, for which gate is being opened, is on this blockchain system, then we simply set the gate status to OPEN (1)
    * If the asset is on another blockchain, then we throw an event that will be caught and relayed by the router
    */
-  function openGate(string _assetType, string _gateName) public {
+  function openGate(string memory _assetType, string memory _gateName) public {
     AssetManager storage am = assetManager[_assetType];
     if (am.blockchainSystem.compare(ownName)) {
       // we are managing this asset
@@ -170,7 +171,7 @@ contract PorthosContract {
     }
   }
 
-  function closeGate(string _assetType, string _gateName, bool _timeout) internal {
+  function closeGate(string memory _assetType, string memory _gateName, bool _timeout) internal {
     AssetManager storage am = assetManager[_assetType];
     if (am.blockchainSystem.compare(ownName)) {
       // we are managing this asset
@@ -189,15 +190,15 @@ contract PorthosContract {
     }
   }
 
-  function isGateOpen(string _gateName) internal view returns (bool) {
+  function isGateOpen(string memory _gateName) internal view returns (bool) {
     return gateStatus[_gateName] == 1;
   }
 
-  function isGateClosed(string _gateName) internal view returns (bool) {
+  function isGateClosed(string memory _gateName) internal view returns (bool) {
     return gateStatus[_gateName] == 2;
   }
 
-  function releaseCommitments(string _commitments) internal {
+  function releaseCommitments(string memory _commitments) internal {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -215,7 +216,7 @@ contract PorthosContract {
     }
   }
 
-  function cancelCommitments(string _commitments) internal {
+  function cancelCommitments(string memory _commitments) internal {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -233,7 +234,7 @@ contract PorthosContract {
     }
   }
 
-  function getAllCommitments() internal view returns (string) {
+  function getAllCommitments() internal view returns (string memory) {
     uint arrayLength = commitments.length;
 
     string memory result = "";
@@ -244,7 +245,7 @@ contract PorthosContract {
     return result;
   }
 
-  function fetchBalance(string _assetType, address _address) public view returns (uint) {
+  function fetchBalance(string memory _assetType, address _address) public view returns (uint) {
     return assetRegisters[_assetType].getBalance(_address);
   }
 
@@ -268,7 +269,7 @@ contract PorthosContract {
    * This function releases all the commitments held by this contract, and sends a message to 
    * other contracts to release their own commitments
    */
-  function releaseAllCommitments(string _assetType) public {
+  function releaseAllCommitments(string memory _assetType) public {
     // lookup who the asset manager is for this type of asset
     AssetManager storage am = assetManager[_assetType];
     
@@ -291,7 +292,7 @@ contract PorthosContract {
    * This function cancels all the commitments held by this contract, and sends a message to 
    * other contracts to cancel their own commitments
    */
-  function cancelAllCommitments(string _assetType) public {
+  function cancelAllCommitments(string memory _assetType) public {
     // lookup who the asset manager is for this type of asset
     AssetManager storage am = assetManager[_assetType];
     
@@ -310,13 +311,13 @@ contract PorthosContract {
     }   
   }
 
-  function countCommitments (string _commitments) internal pure returns (uint){
+  function countCommitments (string memory _commitments) internal pure returns (uint){
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     return s.count(delim) + 1;
   }
 
-  function sumCommitments (string _type, string _commitments) internal view returns (uint) {
+  function sumCommitments (string memory _type, string memory _commitments) internal view returns (uint) {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -337,7 +338,7 @@ contract PorthosContract {
     return sumTotal;  
   }
 
-  function filterCommitmentsByType(string _type, string _commitments) internal view returns (string) {
+  function filterCommitmentsByType(string memory _type, string memory _commitments) internal view returns (string memory) {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -351,14 +352,36 @@ contract PorthosContract {
 
     for (uint j = 0; j < arrayLength; j++) {
       if (commitments[parts[j]].assetType.compare(_type)) {
-        result = string(abi.encodePacked(result, ",", i.uintToString()));
+        result = string(abi.encodePacked(result, ",", j.uintToString()));
       }
     }    
 
     return result;
   }
 
-  function filterCommitmentsByRecipient(address _recipient, string _commitments) internal view returns (string) {
+  function filterCommitmentsByValue(string memory _value, string memory _commitments) internal view returns (string memory) {
+    strings.slice memory s = _commitments.toSlice();
+    strings.slice memory delim = ",".toSlice();
+    uint[] memory parts = new uint[](s.count(delim) + 1);
+
+    for (uint i = 0; i < parts.length; i++) {
+      parts[i] = s.split(delim).toString().stringToUint();
+    }
+
+    uint arrayLength = parts.length;
+    string memory result = "";
+
+    for (uint j = 0; j < arrayLength; j++) {
+      if (commitments[parts[j]].assetType.compare(_value)) {
+        result = string(abi.encodePacked(result, ",", j.uintToString()));
+      }
+    }    
+
+    return result;
+  }
+
+
+  function filterCommitmentsByRecipient(address _recipient, string memory _commitments) internal view returns (string memory) {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -372,14 +395,14 @@ contract PorthosContract {
 
     for (uint j = 0; j < arrayLength; j++) {
       if (commitments[parts[j]].recipient == _recipient) {
-        result = string(abi.encodePacked(result, ",", i.uintToString()));
+        result = string(abi.encodePacked(result, ",", j.uintToString()));
       }
     }    
 
     return result;
   }
 
-  function filterCommitmentsBySender(address _sender, string _commitments) internal view returns (string) {
+  function filterCommitmentsBySender(address _sender, string memory _commitments) internal view returns (string memory) {
     strings.slice memory s = _commitments.toSlice();
     strings.slice memory delim = ",".toSlice();
     uint[] memory parts = new uint[](s.count(delim) + 1);
@@ -393,15 +416,26 @@ contract PorthosContract {
 
     for (uint j = 0; j < arrayLength; j++) {
       if (commitments[parts[j]].sender == _sender) {
-        result = string(abi.encodePacked(result, ",", i.uintToString()));
+        result = string(abi.encodePacked(result, ",", j.uintToString()));
       }
     }    
 
     return result;
   }
 
-  function compareAssetType(string _type1, string _type2) internal pure returns (bool){
+  function compareAssetType(string memory _type1, string memory _type2) internal pure returns (bool){
     return _type1.compare(_type2);
   }
 
+  function sendAssets(string memory _assetType, ) {
+
+  }
+
+  function maxOf() {
+
+  }
+
+  function groupBySender() {
+
+  }
 }

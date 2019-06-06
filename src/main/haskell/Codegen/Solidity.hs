@@ -3,6 +3,7 @@ module Codegen.Solidity where
 import           Porthos
 import           StatementGenerator
 import           Data.Char
+-- import           Commitments
 
 
 generateSolidity :: [Method] -> String
@@ -17,11 +18,13 @@ justStatements c = show $ generateStatements m c
 intro :: Blockchain -> String
 intro b = "pragma solidity ^0.4.24;\n\n" ++
         "import \"../framework/PorthosContract.sol\";\n\n" ++
-        "contract " ++ b ++ " is PorthosContract {\n" ++
+        "contract " ++ show b ++ " is PorthosContract {\n" ++
         "  address alice;\n" ++
         "  address bob;\n" ++
         "  address charlie;\n\n" ++ 
-        "  constructor(address _alice, address _bob, address _charlie, address _gateway, string _blockchainName)\n" ++
+        "  address dave;\n" ++
+        "  address erin;\n\n" ++ 
+        "  constructor(address _alice, address _bob, address _charlie, address _gateway, string memory _blockchainName)\n" ++
         "    PorthosContract (_blockchainName) public\n" ++
         "  {\n" ++
         "    alice   = _alice;\n" ++
@@ -48,7 +51,7 @@ generateMethodCode (Method _ m n t pp ss)
             generatePreConditions pp ++ generateStmtCode ss
             ++ "\n  }\n"
     params
-      | t == MTCommit = "string _assetType, uint _quantity, address _recipient"
+      | t == MTCommit = "string memory _assetType, uint _quantity, address _recipient"
       | otherwise = ""
 
 generatePreConditions :: [PreCondition] -> String
@@ -66,8 +69,8 @@ generateFilterCode :: TxFilterExpr -> String
 generateFilterCode NoTxFilter      = ""
 generateFilterCode (AndTF f1 f2)   =  generateFilterCode f1 ++ generateFilterCode f2
 -- generateFilterCode (OrTF f1 f2)    = "\n  require((" ++ generateFilterCode f1 ++ ") || (" ++ generateFilterCode f2 ++ "));"
-generateFilterCode (Sender p)      = "\n    if(msg.sender != " ++ name p ++ ")\n      return;"
-generateFilterCode (Recipient p)   = "\n    if(_recipient != " ++ name p ++")\n      return;";
+generateFilterCode (Sender p)      = "\n    if(msg.sender != " ++ show p ++ ")\n      return;"
+generateFilterCode (Recipient p)   = "\n    if(_recipient != " ++ show p ++")\n      return;";
 generateFilterCode (AssetIs a)     = "\n    if(!compareAssetType(_assetType, \"" ++ show (getAssetType a) ++ "\") || _quantity != " ++ show (getAssetQuantity a) ++ ")\n      return;"
 generateFilterCode (AssetTypeIs t) = "\n    if(!compareAssetType(_assetType, \"" ++ show t ++ "\")\n      return;"
 
@@ -88,14 +91,33 @@ generateStmtCode' (S_OpenGate at s)            = "\n    openGate(\"" ++ show at 
 generateStmtCode' (S_CloseGate at s t)         = "\n    closeGate(\"" ++ show at ++ "\", " ++ show s ++ ", " ++ map toLower (show t) ++ ");"
 generateStmtCode' (S_ReleaseCommitment c)      = "\n    releaseCommitments(" ++ generateCommitmentDSLCode c ++ ");"
 generateStmtCode' (S_AutoCancelCommitment c)   = "\n    cancelCommitments(" ++ generateCommitmentDSLCode c ++ ");"
+generateStmtCode' (S_SendAssets p)             = "\n    sendAssets(" ++ resolveParticipant p ++ ");"
 
+resolveParticipant :: Participant -> String
+resolveParticipant (Participant name address) = address
+resolveParticipant (MaxOf cg)                 = "maxOf(" ++ generateCommitmentGroupCode cg ++ ")"
 
-generateCommitmentDSLCode :: Commitment -> String
+-- generateCommitmentDSLCode :: Commitment -> String
+-- generateCommitmentDSLCode AllCommitments = "getAllCommitments()"
+-- generateCommitmentDSLCode (WhereCommitter p c) = "filterCommitmentsBySender(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
+-- generateCommitmentDSLCode (WhereRecipient p c) = "filterCommitmentsByRecipient(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
+-- generateCommitmentDSLCode (WhereAssetType t c) = "filterCommitmentsByType(\"" ++ show t ++ "\", " ++ generateCommitmentDSLCode c ++ ")"
+-- generateCommitmentDSLCode (WhereAssetValue v c) = "filterCommitmentsByValue(" ++ show v ++ ", " ++ generateCommitmentDSLCode c ++ ")"
+-- generateCommitmentDSLCode _              = undefined
+
+generateCommitmentDSLCode :: CommitmentSet -> String
 generateCommitmentDSLCode AllCommitments = "getAllCommitments()"
-generateCommitmentDSLCode (WhereCommitter p c) = "filterCommitmentsBySender(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
-generateCommitmentDSLCode (WhereRecipient p c) = "filterCommitmentsByRecipient(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
-generateCommitmentDSLCode (WhereAssetType t c) = "filterCommitmentsByType(\"" ++ show t ++ "\", " ++ generateCommitmentDSLCode c ++ ")"
-generateCommitmentDSLCode _              = undefined
+generateCommitmentDSLCode (FilterBySender c p) = "filterCommitmentsBySender(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
+generateCommitmentDSLCode (FilterByReceiver c p) = "filterCommitmentsByRecipient(" ++ show p ++ ", " ++ generateCommitmentDSLCode c ++ ")"
+generateCommitmentDSLCode (FilterByAsset c p) = "filterCommitmentsByAsset(\"" ++ show p ++ "\", " ++ generateCommitmentDSLCode c ++ ")"
+-- generateCommitmentDSLCode _              = undefined
+
+generateCommitmentGroupCode :: CommitmentGroup -> String
+generateCommitmentGroupCode (GroupBySender c) = "groupBySender(" ++ generateCommitmentDSLCode c ++ ")"
+generateCommitmentGroupCode (GroupByReceiver c) = "groupByReceiver(" ++ generateCommitmentDSLCode c ++ ")"
+
+-- generateCommitmentMaxCode :: CommitmentMax -> String
+-- generateCommitmentMaxCode (MaxOf g) = "maxOf(" ++ generateCommitmentDSLCode' g ++ ")"
 
 
 generateCBool :: CBool -> String

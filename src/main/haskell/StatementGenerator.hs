@@ -4,6 +4,7 @@ module StatementGenerator where
 import           Data.IORef
 import           Porthos
 import           System.IO.Unsafe
+-- import           Commitments
 
 {-# NOINLINE idCounter #-}
 idCounter :: IORef Integer
@@ -75,8 +76,8 @@ data Method = Method {chain         :: Blockchain,
                       preconditions :: [PreCondition],
                       statements    :: [Statement]}
 
-mainChain :: String
-mainChain = "Ethereum_1"
+mainChain :: Blockchain
+mainChain = Ethereum_1
 
 privateMethod, publicMethod :: Method
 privateMethod = Method {chain=mainChain, modifier=Private, methodName="", methodType=MTOther, preconditions=[], statements=[]}
@@ -107,11 +108,12 @@ data MethodType = MTCommit |
 
 data Statement where 
   S_AddCommitment :: Statement
-  S_ReleaseCommitment :: Commitment -> Statement
-  S_AutoCancelCommitment :: Commitment -> Statement
+  S_ReleaseCommitment :: CommitmentSet -> Statement
+  S_AutoCancelCommitment :: CommitmentSet -> Statement
   S_ReleaseAllCommitments ::  Statement
   S_AutoCancelAll :: Statement
   S_FireEvent :: String -> Statement
+  S_SendAssets :: Participant -> Statement
   S_IfThenElse :: CBool -> [Statement] -> [Statement] -> Statement
   S_InitSemaphore :: String -> Statement
   S_CompleteSemaphore :: String -> Statement
@@ -126,6 +128,7 @@ instance Show Statement where
   show S_ReleaseAllCommitments = "S_ReleaseAllCommitments "
   show S_AutoCancelAll = "S_AutoCancelAll "
   show (S_FireEvent s) = "S_FireEvent " ++ show s
+  show (S_SendAssets p) = "S_SendAssets " ++ show p
   show (S_IfThenElse b ss1 ss2) = "S_IfThenElse (" ++ show b ++ ") then (" ++ show ss1 ++ ") else (" ++ show ss2 ++ ")"
   show (S_InitSemaphore s) = "S_InitSemaphore " ++ show s
   show (S_CompleteSemaphore s)  = "S_CompleteSemaphore " ++ show s
@@ -301,6 +304,11 @@ generateStatements currentMethod (Both c1 c2) = continueMethod : currentMethod' 
                              methodType=MTOther,
                              preconditions=[PcSemaphore semLeft, PcSemaphore semRight],
                              statements=[]}
+generateStatements currentMethod (SendAssets p c) = methods
+  where
+    methods = generateStatements currentMethod' c
+
+    currentMethod' = addToMethod currentMethod (S_SendAssets p)
 
 
 addToMethod :: Method -> Statement -> Method

@@ -1,17 +1,10 @@
 module Lang where
 
 import           Porthos
+-- import           Commitments
 
 end :: Contract
 end = Null
-
--- claim :: (ActionName, TxFilterExpr, Commitment, Contract, Timeout, Contract) -> Contract
--- claim (n, tf, commitment, continueWith, timeout, c') =
---   UserAction n tf (Claim commitment) continueWith timeout c'
-
--- cancel :: (ActionName, TxFilterExpr, Commitment, Contract, Timeout, Contract) -> Contract
--- cancel (n, tf, commitment, continueWith, timeout, c') =
---   UserAction n tf (CancelCommit commitment) continueWith timeout c'
 
 onUserCommit :: (AssetType t) => ActionName -> (t, TxFilterExpr) -> Contract -> (Timeout, Contract) -> Contract
 onUserCommit n (t, x) c y = commitWithTagAndId n t x c y NoTag NoId
@@ -30,10 +23,10 @@ repeatCommit :: (AssetType t) => ActionName -> (t, TxFilterExpr) -> (Timeout, Co
 repeatCommit n (at, tf) (timeout, c) =
   RepeatUserAction n at (tf .&. isAssetType at) (Commit NoId NoTag) timeout c
 
-autoRelease :: Commitment -> Contract -> Contract
+autoRelease :: CommitmentSet -> Contract -> Contract
 autoRelease commitment = AutoAction (Release commitment)
 
-autoCancel :: Commitment -> Contract -> Contract
+autoCancel :: CommitmentSet -> Contract -> Contract
 autoCancel commitment = AutoAction (Cancel commitment)
 
 onTimeout :: Time -> Contract -> (Timeout, Contract)
@@ -63,6 +56,9 @@ ifThenElse cond (c1, c2) = IfThenElse cond c1 c2
 fireEvent :: String -> Contract -> Contract
 fireEvent = FireEvent
 
+sendAssets :: Participant -> Contract -> Contract
+sendAssets recipient c = SendAssets recipient c
+
 -- assetType :: (AssetType t) => Asset t -> t
 -- assetType (Asset t _) = t
 -- assetType (Sum t _)   = t
@@ -77,8 +73,14 @@ followedBy = FollowedBy
 both :: (Contract, Contract) -> Contract
 both (c1, c2) = Both c1 c2
 
+(.&&.) :: Contract -> Contract -> Contract
+x .&&. y = both (x,y)
+
 oneOf :: (Contract, Contract) -> Contract
 oneOf (c1, c2) = OneOf c1 c2
+
+(.||.) :: Contract -> Contract -> Contract
+x .||. y = oneOf (x,y)
 
 asset :: (AssetType t) => (t, Integer) -> Asset t
 asset (t, q) = Asset t q
@@ -96,11 +98,11 @@ false = CFalse
 not :: CBool -> CBool
 not = CNot
 
-(.&&.) :: CBool -> CBool -> CBool
-x .&&. y = CAnd x y
+-- (.&&.) :: CBool -> CBool -> CBool
+-- x .&&. y = CAnd x y
 
-(.||.) :: CBool -> CBool -> CBool
-x .||. y = COr x y
+-- (.||.) :: CBool -> CBool -> CBool
+-- x .||. y = COr x y
 
 (.+.) :: (AssetType t) => Asset t -> Asset t -> Asset t
 x .+. y = Add x y
@@ -110,33 +112,43 @@ exchange (_, b, f) (Asset _ q) = Asset b (round (f * fromIntegral q))
 exchange (a, b, f) x = Convert (a, b, f) x
 
 -- Commitments
-allCommitments :: Commitment
-allCommitments = AllCommitments
+-- allCommitments :: Commitment
+-- allCommitments = AllCommitments
 
-whereCommitterIs :: (Participant, Commitment) -> Commitment
-whereCommitterIs (p, c) = WhereCommitter p c
+-- whereCommitterIs :: (Participant, Commitment) -> Commitment
+-- whereCommitterIs (p, c) = WhereCommitter p c
 
-whereRecipientIs :: (Participant, Commitment) -> Commitment
-whereRecipientIs (p, c) = WhereRecipient p c
+-- whereRecipientIs :: (Participant, Commitment) -> Commitment
+-- whereRecipientIs (p, c) = WhereRecipient p c
 
-whereAssetTypeIs :: (AssetType t) => (t, Commitment) -> Commitment
-whereAssetTypeIs (t, c) = WhereAssetType t c
+-- whereAssetTypeIs :: (AssetType t) => (t, Commitment) -> Commitment
+-- whereAssetTypeIs (t, c) = WhereAssetType t c
 
-orderByParticipant :: Order -> Commitment -> Commitment
-orderByParticipant = OrderCF CParticipantField
+-- whereAssetValueIs :: (String, Commitment) -> Commitment
+-- whereAssetValueIs (t, c) = WhereAssetValue t c
 
-asc :: Order
-asc = ASC
+-- orderByParticipant :: Order -> Commitment -> Commitment
+-- orderByParticipant = OrderCF CParticipantField
 
-desc :: Order
-desc = DESC
+-- groupByRecipient :: Commitment -> (Participant, N)
+-- groupByRecipient 
 
-selectAll :: (Commitment -> Commitment) -> Commitment -> Commitment
-selectAll f = f
+-- asc :: Order
+-- asc = ASC
 
-sumC :: (Show t, AssetType t) => (t, Commitment) -> Asset t
-sumC (assetType, commitments) = Sum assetType commitments
+-- desc :: Order
+-- desc = DESC
 
-countC :: Commitment -> N
-countC = Count
+-- selectAll :: (Commitment -> Commitment) -> Commitment -> Commitment
+-- selectAll f = f
+
+-- sumC :: (Show t, AssetType t) => (t, Commitment) -> Asset t
+-- sumC (aType, commitments) = Sum aType commitments
+
+-- countC :: Commitment -> N
+-- countC = Count
+
+
+
+
 

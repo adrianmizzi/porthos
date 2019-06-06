@@ -3,17 +3,14 @@
 set -e
 set -o pipefail
 
-baseDir="../src/main/solidity"
+baseDir="../../src/main/solidity"
 
 targets="
 framework/Gateway
 framework/FungibleAsset
 framework/PorthosContract
-app/PropSale
+Ethereum_1
 "
-#app/Ethereum_1
-#app/Ethereum_2
-
 
 for target in ${targets}; do
     dirName=$(dirname "${target}")

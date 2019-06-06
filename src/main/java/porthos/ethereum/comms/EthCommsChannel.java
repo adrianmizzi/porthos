@@ -13,17 +13,24 @@ import org.web3j.protocol.core.methods.request.EthFilter;
 import org.web3j.tx.Contract;
 import org.web3j.tx.ManagedTransaction;
 
+import porthos.Constants.Blockchain;
+import porthos.GateManager;
 import porthos.ethereum.Web3jManager;
-import porthos.ethereum.Web3jManager.Blockchain;
 import porthos.ethereum.contracts.generated.Gateway;
 
-public class CommsChannel {
-	private static final Logger log = LoggerFactory.getLogger(CommsChannel.class);
+public class EthCommsChannel {
+	private static final Logger log = LoggerFactory.getLogger(EthCommsChannel.class);
 
 	private Map<Blockchain, Gateway> gateways;
+	
+	private static EthCommsChannel instance= new EthCommsChannel();
 
-	public CommsChannel() {
+	private EthCommsChannel() {
 		gateways = new HashMap<Blockchain, Gateway>();
+	}
+	
+	public static EthCommsChannel getInstance() {
+		return instance;
 	}
 
 	public void registerGateway(Blockchain system, String gatewayAddress) throws Exception {
@@ -48,7 +55,7 @@ public class CommsChannel {
 		.subscribe(event -> {
 			log.info("Received Cross Chain Call {} / {}", event.blockchainSystem, event.methodName);
 			try {
-				crosschainCall(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.methodName);
+				GateManager.getInstance().crosschainCall(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.methodName);
 			} catch (Exception e) {
 				log.error("Unable to execute cross chain call", e);
 			}
@@ -61,9 +68,9 @@ public class CommsChannel {
 		.subscribe(event -> {
 			log.info("{} Received Cross Chain: Open Gate Call {}: {}-{}", system, event.blockchainSystem, event.assetType, event.gateName);
 			try {
-				openGateCall(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType, event.gateName);
+				GateManager.getInstance().openGate(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType, event.gateName);
 			} catch (Exception e) {
-				log.error("Unable to execute cross chain call", e);
+				log.error("Unable to execute cross chain call - openGate", e);
 			}
 		});
 		
@@ -74,28 +81,27 @@ public class CommsChannel {
 		.subscribe(event -> {
 			log.info("{} Received Cross Chain: Release All Commitments Call {}: {}", system, event.blockchainSystem, event.assetType);
 			try {
-				releaseAllCommitment(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType);
+				GateManager.getInstance().releaseAllCommitment(Blockchain.valueOf(event.blockchainSystem), event.contractAddress, event.assetType);
 			} catch (Exception e) {
-				log.error("Unable to execute cross chain call", e);
+				log.error("Unable to execute cross chain call - releaseAllCommitment", e);
 			}
 		});
-
 	}
 	
-	private void crosschainCall(Blockchain _system, String _contractAddress, String _methodName) throws Exception {
+	public void crosschainCall(Blockchain _system, String _contractAddress, String _methodName) throws Exception {
 		Gateway gateway = gateways.get(_system);
 		log.info("Initiating cross chain call {} {}", _contractAddress, _methodName);
 		gateway.call(_contractAddress, _methodName).send();
 	}
 	
-	private void openGateCall(Blockchain _system, String _contractAddress, String _assetType, String _gateName) throws Exception {
+	public void openGateCall(Blockchain _system, String _contractAddress, String _assetType, String _gateName) throws Exception {
 		Gateway gateway = gateways.get(_system);
 		log.info("Initiating cross chain open gate call {} {} for gate {}", _system.toString(), _assetType, _gateName);
 		gateway.openGateCall(_contractAddress, _assetType, _gateName).send();
 		log.info("Open Gate Call complete");
 	}
 	
-	private void releaseAllCommitment(Blockchain _system, String _contractAddress, String _assetType) throws Exception {
+	public void releaseAllCommitment(Blockchain _system, String _contractAddress, String _assetType) throws Exception {
 		Gateway gateway = gateways.get(_system);
 		log.info("Initiating cross chain release all commitments call {} {}", _system.toString(), _assetType);
 		log.info("Calling contract {}", _contractAddress);

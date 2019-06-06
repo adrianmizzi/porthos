@@ -1,4 +1,5 @@
-pragma solidity ^0.4.24;
+// pragma solidity ^0.4.24;
+pragma solidity ^0.5.4;
 
 import "./PorthosContract.sol";
 
@@ -35,62 +36,62 @@ contract Gateway {
 
 
   // Emitting of Events Section
-  function fireMessage(string _message) public {
+  function fireMessage(string memory _message) public {
   	emit Log(_message, block.number, tx.origin);
   }
 
-  function requestCallback(address _contractAddress, string _methodName, uint _timeRequested) public {
+  function requestCallback(address _contractAddress, string memory _methodName, uint _timeRequested) public {
   	emit CallbackRequest(_contractAddress, _methodName, _timeRequested);
   	emit Log("Request Callback", block.number, tx.origin);
   }
 
-  function cancelCallback(address _contractAddress, string _methodName, uint _timeRequested) public {
+  function cancelCallback(address _contractAddress, string memory _methodName, uint _timeRequested) public {
   	emit CallbackCancel(_contractAddress, _methodName, _timeRequested);
   }
 
-  function initiateCCC(string _bcSystem, address _contractAddress, string _methodName) public {
+  function initiateCCC(string memory _bcSystem, address _contractAddress, string memory _methodName) public {
   	emit CrossChain(_bcSystem, _contractAddress, _methodName);
   }
 
-  function ccOpenGate(string _bcSystem, address _contractAddress, string _assetType, string _gateName) public {
+  function ccOpenGate(string memory _bcSystem, address _contractAddress, string memory _assetType, string memory _gateName) public {
     emit CCOpenGate(_bcSystem, _contractAddress, _assetType, _gateName);
   }
 
-  function ccReleaseCommitments(string _bcSystem, address _contractAddress, string _assetType) public {
+  function ccReleaseCommitments(string memory _bcSystem, address _contractAddress, string memory _assetType) public {
     emit CCReleaseCommitments(_bcSystem, _contractAddress, _assetType);
   }
 
-  function ccCancelCommitments(string _bcSystem, address _contractAddress, string _assetType) public {
+  function ccCancelCommitments(string memory _bcSystem, address _contractAddress, string memory _assetType) public {
     emit CCCancelCommitments(_bcSystem, _contractAddress, _assetType);
   }
 
-  function gateOpened(string _gateName) public {
+  function gateOpened(string memory _gateName) public {
     emit GateOpened(_gateName);
   }
 
-  function gateClosed(string _gateName, bool _timeout) public {
+  function gateClosed(string memory _gateName, bool _timeout) public {
     emit GateClosed(_gateName, _timeout);
   }
 
   // Call Functions
-  function call(address contractAddress, string method) public {
-    if (!contractAddress.call(bytes4(keccak256(abi.encodePacked(method))))) 
-      revert();
-  }
+  // function call(address contractAddress, string memory method) public {
+  //   if (!contractAddress.call(abi.encodeWithSignature(bytes4(keccak256(abi.encodePacked(method))))) 
+  //   // if (!contractAddress.call(bytes4(keccak256(abi.encodePacked(method))))) 
+  //     revert();
+  // }
 
-  function openGateCall(address contractAddress, string assetType, string gateName) public {
+  function openGateCall(address contractAddress, string memory assetType, string memory gateName) public {
     PorthosContract c = PorthosContract(contractAddress);
     c.openGate(assetType, gateName);
   }
 
-  function releaseAllCommitmentsCall(address contractAddress, string assetType) public {
+  function releaseAllCommitmentsCall(address contractAddress, string memory assetType) public {
     PorthosContract c = PorthosContract(contractAddress);
     c.releaseAllCommitments(assetType);
   }
 
-  function cancelAllCommitmentsCall(address contractAddress, string assetType) public {
+  function cancelAllCommitmentsCall(address contractAddress, string memory assetType) public {
     PorthosContract c = PorthosContract(contractAddress);
     c.cancelAllCommitments(assetType);
   }
-
 }

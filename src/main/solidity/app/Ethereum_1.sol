@@ -1,4 +1,5 @@
-pragma solidity ^0.4.24;
+// pragma solidity ^0.4.24;
+pragma solidity ^0.5.4;
 
 import "../framework/PorthosContract.sol";
 
@@ -6,6 +7,9 @@ contract Ethereum_1 is PorthosContract {
   address alice;
   address bob;
   address charlie;
+
+  address dave;
+  address erin;
 
   constructor(address _alice, address _bob, address _charlie, address _gateway, string _blockchainName)
     PorthosContract (_blockchainName) public
@@ -16,143 +20,116 @@ contract Ethereum_1 is PorthosContract {
     gateway = Gateway(_gateway);
   }
 
-  function start() public
-  {
-    openGate("Property", "commitProperty");
-  }
-
-  function commitProperty_commit(string _assetType, uint _quantity, address _recipient) public
-  {
-    if(_recipient != bob)
-      return;
-    if(msg.sender != alice)
-      return;
-    if(!compareAssetType(_assetType, "Property") || _quantity != 1)
-      return;
-    if(!isGateOpen("commitProperty"))
-      return;
-    addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
-    closeGate("Property", "commitProperty", false);
-    openGate("EUR", "payDeposit");
-  }
-
-  function payDeposit_commit(string _assetType, uint _quantity, address _recipient) public
-  {
-    if(msg.sender != bob)
-      return;
-    if(_recipient != alice)
-      return;
-    if(!compareAssetType(_assetType, "EUR") || _quantity != 10000)
-      return;
-    if(!isGateOpen("payDeposit"))
-      return;
-    addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
-    closeGate("EUR", "payDeposit", false);
-    openGate("EUR", "payBalance");
-  }
-
   function continue_1() private
   {
-    if(!semaphore["semaphore1"])
+    if(!semaphore["semLeft1"])
       return;
-  }
-
-  function payBalance_commit(string _assetType, uint _quantity, address _recipient) public
-  {
-    if(_recipient != alice)
+    if(!semaphore["semRight1"])
       return;
-    if(!compareAssetType(_assetType, "EUR") || _quantity != 90000)
-      return;
-    if(!isGateOpen("payBalance"))
-      return;
-    addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
-    closeGate("EUR", "payBalance", false);
-    openGate("ApprovedByNotary", "approved");
-    openGate("RejectedByNotary", "rejected");
-  }
-
-  function approved_commit(string _assetType, uint _quantity, address _recipient) public
-  {
-    if(msg.sender != charlie)
-      return;
-    if(_recipient != charlie)
-      return;
-    if(!isGateOpen("approved"))
-      return;
-    addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
-    closeGate("ApprovedByNotary", "approved", false);
     releaseAllCommitments();
-    semaphore["semaphore1"] = true;
-    continue_1();
+    sendAssets(maxOf(groupBySender(filterCommitmentsByAsset("Vote Ethereum_1", getAllCommitments()))));
   }
 
-  function approved_timeout() public
+  function continue_2() private
   {
-    if(block.number < 200)
+    if(!semaphore["semLeft2"])
       return;
-    if(!isGateOpen("approved"))
+    if(!semaphore["semRight2"])
       return;
-    closeGate("ApprovedByNotary", "approved", true);
-    cancelAllCommitments();
-    semaphore["semaphore1"] = true;
-    continue_1();
+    semaphore["semLeft1"] = false;
+    semaphore["semRight1"] = false;
+    openGate("Vote Ethereum_1", "votealice");
+    openGate("Vote Ethereum_2", "votebob");
   }
 
-  function rejected_commit(string _assetType, uint _quantity, address _recipient) public
+  function votealice_commit(string _assetType, uint _quantity, address _recipient) public
   {
-    if(msg.sender != charlie)
+    if(msg.sender != alice)
       return;
-    if(_recipient != charlie)
-      return;
-    if(!isGateOpen("rejected"))
+    if(!isGateOpen("votealice"))
       return;
     addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
-    closeGate("RejectedByNotary", "rejected", false);
-    cancelAllCommitments();
-    semaphore["semaphore1"] = true;
+    closeGate("Vote Ethereum_1", "votealice", false);
+    semaphore["semLeft1"] = true;
     continue_1();
   }
 
-  function rejected_timeout() public
+  function votealice_timeout() public
   {
     if(block.number < 200)
       return;
-    if(!isGateOpen("rejected"))
+    if(!isGateOpen("votealice"))
       return;
-    closeGate("RejectedByNotary", "rejected", true);
+    closeGate("Vote Ethereum_1", "votealice", true);
     cancelAllCommitments();
-    semaphore["semaphore1"] = true;
+    semaphore["semLeft1"] = true;
     continue_1();
   }
 
-  function payBalance_timeout() public
+  function votebob_complete_onuseraction() public
   {
-    if(block.number < 100)
+    if(tx.origin != owner)
       return;
-    if(!isGateOpen("payBalance"))
-      return;
-    closeGate("EUR", "payBalance", true);
-    releaseCommitments(filterCommitmentsByRecipient(alice, getAllCommitments()));
-    cancelCommitments(filterCommitmentsBySender(alice, getAllCommitments()));
+    semaphore["semRight1"] = true;
+    continue_1();
   }
 
-  function payDeposit_timeout() public
+  function votebob_complete_ontimeout() public
   {
-    if(block.number < 20)
+    if(tx.origin != owner)
       return;
-    if(!isGateOpen("payDeposit"))
+    semaphore["semRight1"] = true;
+    continue_1();
+  }
+
+  function start() public
+  {
+    semaphore["semLeft2"] = false;
+    semaphore["semRight2"] = false;
+    openGate("Currency EUR", "payalice");
+    openGate("Currency GBP", "paybob");
+  }
+
+  function payalice_commit(string _assetType, uint _quantity, address _recipient) public
+  {
+    if(msg.sender != alice)
       return;
-    closeGate("EUR", "payDeposit", true);
+    if(_recipient != dao)
+      return;
+    if(!isGateOpen("payalice"))
+      return;
+    addCommitment(Commitment({tagId: "", sender: msg.sender, recipient: _recipient, assetType: _assetType, quantity: _quantity, status: 0}));
+    closeGate("Currency EUR", "payalice", false);
+    semaphore["semLeft2"] = true;
+    continue_2();
+  }
+
+  function payalice_timeout() public
+  {
+    if(block.number < 200)
+      return;
+    if(!isGateOpen("payalice"))
+      return;
+    closeGate("Currency EUR", "payalice", true);
     cancelAllCommitments();
+    semaphore["semLeft2"] = true;
+    continue_2();
   }
 
-  function commitProperty_timeout() public
+  function paybob_complete_onuseraction() public
   {
-    if(block.number < 10)
+    if(tx.origin != owner)
       return;
-    if(!isGateOpen("commitProperty"))
+    semaphore["semRight2"] = true;
+    continue_2();
+  }
+
+  function paybob_complete_ontimeout() public
+  {
+    if(tx.origin != owner)
       return;
-    closeGate("Property", "commitProperty", true);
+    semaphore["semRight2"] = true;
+    continue_2();
   }
 
 }

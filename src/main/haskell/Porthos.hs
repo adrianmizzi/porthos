@@ -12,6 +12,7 @@ data Contract where
   IfThenElse :: CBool -> Contract -> Contract -> Contract
   OneOf :: Contract -> Contract -> Contract
   Both :: Contract -> Contract -> Contract
+  SendAssets :: Participant -> Contract -> Contract
 
 instance Show Contract where
   show = showI ""
@@ -30,6 +31,9 @@ showI _ (FireEvent d c) = "Event (" ++ show d ++ ") then " ++ show c
 showI _ (IfThenElse b c1 c2) = "If (" ++ show b ++ ") then {" ++ show c1 ++ "} else {" ++ show c2 ++ "}"
 showI _ (OneOf c1 c2) = "One of (" ++ show c1 ++ ", " ++ show c2 ++ ")"
 showI _ (Both c1 c2) = "Both (" ++ show c1 ++ ", " ++ show c2 ++ ")"
+showI indent (SendAssets p c) = "SendAssets to " ++ show p ++ " then {\n" ++ showI indent' c ++ "}"
+  where
+    indent' = indent ++ "  "
 
 data TxFilterExpr where
   NoTxFilter  :: TxFilterExpr
@@ -86,13 +90,13 @@ instance Show UserTx where
 
 data AutoTx = ReleaseAll 
             | AutoCancelAll
-            | Release Commitment
-            | Cancel Commitment
+            | Release CommitmentSet
+            | Cancel CommitmentSet
   deriving (Show)
 
 data Asset t where
   Asset :: (AssetType t) => t -> Integer -> Asset t
-  Sum   :: (AssetType t) => t -> Commitment -> Asset t
+  Sum   :: (AssetType t) => t -> CommitmentSet -> Asset t
   Add   :: (AssetType t) => Asset t -> Asset t -> Asset t
   Convert :: (AssetType t1, AssetType t2) => (t1, t2, Float) -> Asset t1 -> Asset t2
 
@@ -102,53 +106,14 @@ instance (Show t, AssetType t) => Show (Asset t) where
   show (Add a b)   = "Add " ++ show a ++ " " ++ show b
   show (Convert (t1, t2, f) at1) = "Convert " ++ show t1 ++ " -> " ++ show t2 ++ "(" ++ show f ++ ")" ++ show at1
 
-data Commitment where
-  AllCommitments :: Commitment
-  AndCF :: Commitment -> Commitment -> Commitment
-  OrCF :: Commitment -> Commitment -> Commitment
-  WhereCommitter :: Participant -> Commitment -> Commitment
-  WhereRecipient :: Participant -> Commitment -> Commitment
-  WhereAssetType :: (AssetType t) => t -> Commitment -> Commitment
-  WhereDate :: Time -> Commitment -> Commitment
-  WhereDateBefore :: Time -> Commitment -> Commitment
-  WhereDateAfter :: Time -> Commitment -> Commitment
-  WhereAssetQuantity :: Integer -> Commitment -> Commitment
-  WhereAssetQuantityLess :: Integer -> Commitment -> Commitment
-  WhereAssetQuantityGreater :: Integer -> Commitment -> Commitment
-  WhereId :: CommitmentId -> Commitment -> Commitment
-  OrderCF :: CommitmentField -> Order -> Commitment -> Commitment
 
-instance Show Commitment where
-  show AllCommitments = "AllCommitments"
-  show (AndCF c1 c2)  = "(" ++ show c1 ++ ") and (" ++ show c2 ++ ")"
-  show (OrCF c1 c2)  = "(" ++ show c1 ++ ") or (" ++ show c2 ++ ")"
-  show (WhereCommitter p c) = "Where committer is " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereRecipient p c) = "Where recipient is " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereAssetType p c) = "Where assetType is " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereDate p c) = "Where date is " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereDateBefore p c) = "Where date before " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereDateAfter p c) = "Where date after " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereAssetQuantity p c) = "Where quantity is " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereAssetQuantityLess p c) = "Where quantity less than  " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereAssetQuantityGreater p c) = "Where quantity greater than " ++ show p ++ "(" ++ show c ++ ")"
-  show (WhereId p c) = "Where id is " ++ show p ++ "(" ++ show c ++ ")"
-  show (OrderCF p o c) = "order by  " ++ show p ++ " " ++ show o ++ "(" ++ show c ++ ")"
 
-data Order = ASC | DESC
+-- type Blockchain = String
+
+data Blockchain = Ethereum_1 | Ethereum_2 | Hyperledger
   deriving (Show, Eq)
 
-data CommitmentField = CParticipantField |
-                       CAssetTypeField |
-                       CDateField |
-                       CAssetQuantityField |
-                       CIdField |
-                       CTagField
-  deriving (Show, Eq)
-
-
-type Blockchain = String
-
-data Language = Solidity | ChainCode
+data Language = Solidity | Chaincode
   deriving (Show, Eq)
 
 type ChainToLang = Blockchain -> Language
@@ -162,8 +127,9 @@ update state (v, n) = \w -> if v==w then n else state w
 class (Show a) => AssetType a where
     chainOf :: a -> Blockchain
     typeOf  :: a -> String
-    equals  :: a -> a -> CBool
-    compare :: a -> a -> CBool 
+    -- valueOf :: a -> String
+    -- equals  :: a -> a -> CBool
+    -- compare :: a -> a -> CBool 
 
 -- data Blockchain = Ethereum_1 | Ethereum_2 | Hyperledger
 --   deriving (Show)
@@ -186,10 +152,17 @@ type EventDetails = String
 type Time         = Integer
 type ActionName   = String
 
-data Participant = Participant {name::String, address::String}
+data Participant where
+  Participant :: String -> String -> Participant
+  MaxOf :: CommitmentGroup -> Participant
 
 instance Show Participant where
-  show = name
+  show (Participant name _) = name
+  show (MaxOf g) = "maxOf [" ++ show g ++"]"
+
+address :: Participant -> String
+address (Participant _ a) = a
+address (MaxOf g) = "address maxof [" ++ show g ++ "]"
 
 data CBool where
   CTrue   :: CBool 
@@ -239,7 +212,7 @@ instance Show CBool where
   -- (CLTE c1 c2) == (CLTE c1' c2') = (c1 == c1') && (c2 == c2')
 
 data N = I Integer |
-         Count Commitment |
+         Count CommitmentSet |
          AddN N N | 
          NegN N
   deriving (Show)
@@ -294,6 +267,53 @@ getAssetQuantity (Asset _ q) = q
 getAssetQuantity (Convert (_, _, f) at1) = round (f * fromIntegral (getAssetQuantity at1))
 getAssetQuantity _ = undefined
 
+
+-- Commitments
+
+data CommitmentSet where
+    AllCommitments   :: CommitmentSet
+    FilterBySender   :: CommitmentSet -> Participant -> CommitmentSet
+    FilterByReceiver :: CommitmentSet -> Participant -> CommitmentSet
+    FilterByAsset    :: (AssetType t) => CommitmentSet -> t -> CommitmentSet
+    -- OrderBy :: CommitmentSet -> CommitmentField -> CommitmentSet
+
+data CommitmentGroup where
+    GroupBySender :: CommitmentSet -> CommitmentGroup
+    GroupByReceiver :: CommitmentSet -> CommitmentGroup
+
+-- data CommitmentMax where
+--     MaxOf :: CommitmentGroup -> CommitmentMax
+
+instance Show CommitmentSet where
+    show AllCommitments = "AllCommitments"
+    show (FilterBySender c p) = "(" ++ show c ++ ") where sender is " ++ show p
+    show (FilterByReceiver c p) = "(" ++ show c ++ ") where receiver is " ++ show p
+    -- show (GroupByMax c f) = show c ++ " group by max " ++ show f
+
+instance Show CommitmentGroup where
+    show (GroupBySender c) = "(" ++ show c ++ ") group by sender"
+    show (GroupByReceiver c) = "(" ++ show c ++ ") group by receiver"
+
+-- instance Show CommitmentMax where
+--     show (MaxOf g) = "max of [" ++ show g ++ "]"
+
+allCommitments :: CommitmentSet
+allCommitments = AllCommitments
+
+whereSenderIs :: CommitmentSet -> Participant -> CommitmentSet
+whereSenderIs c f = FilterBySender c f
+
+whereReceiverIs :: CommitmentSet -> Participant -> CommitmentSet
+whereReceiverIs c f = FilterByReceiver c f
+
+whereAssetTypeIs :: (AssetType t) => CommitmentSet -> t -> CommitmentSet
+whereAssetTypeIs c f = FilterByAsset c f
+
+groupBySender :: CommitmentSet -> CommitmentGroup
+groupBySender c = GroupBySender c
+
+maxOf :: CommitmentGroup -> Participant
+maxOf g = MaxOf g
 
 
 

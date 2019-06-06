@@ -1,4 +1,5 @@
-pragma solidity ^0.4.24;
+// pragma solidity ^0.4.24;
+pragma solidity ^0.5.4;
 
 // Interface for Asset Registries
 interface AssetRegisterInterface {
@@ -27,7 +28,7 @@ contract FungibleAsset is AssetRegisterInterface {
 
         balances[_recipient] = 0;
 
-        emit AssetRegisterEvent(_recipient, 0x00, 0, 0, 0);
+        emit AssetRegisterEvent(_recipient, address(0x00), 0, 0, 0);
     }
 
     function issueAssets(address _recipient, uint _amount) public {
@@ -37,7 +38,7 @@ contract FungibleAsset is AssetRegisterInterface {
 
         balances[_recipient] += _amount;
 
-        emit AssetRegisterEvent(0x00, _recipient, _amount, 0, balances[_recipient]);
+        emit AssetRegisterEvent(address(0x00), _recipient, _amount, 0, balances[_recipient]);
     }
 
     function transfer(address _sender, address _recipient, uint _amount) public {
